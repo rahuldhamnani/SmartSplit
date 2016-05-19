@@ -1,0 +1,232 @@
+package com.iTeam.controller;
+
+import java.util.List;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.iTeam.service.TransactionsService;
+import com.iTeam.service.TransactionsServiceImpl;
+import com.iTeam.common.UserBalance;
+import com.iTeam.common.UserDashboard;
+import com.iTeam.common.UserLogin;
+import com.iTeam.common.Users;
+import com.iTeam.common.Friend;
+import com.iTeam.common.MetaTransaction;
+import com.iTeam.common.Transactions;
+
+@Controller
+public class TransactionsControllerback {
+	
+	
+	@Resource(name="transactionsService")
+	private TransactionsService transactionsService;
+	
+	private UserBalance userBal;
+	//private String pass, usernm;
+	
+	@RequestMapping(value = "/mainPage",method = RequestMethod.GET)
+	public String tp()
+	{
+		return "hello";
+	}
+	
+	@RequestMapping(value = "/login",method = RequestMethod.GET)
+	public String login()
+	{
+		return "login1";
+	}
+	
+	@RequestMapping(value = "/logout",method = RequestMethod.GET)
+	public String logout(HttpSession session)
+	{
+		session.removeAttribute("username");
+		if (session != null) {
+		    session.invalidate();
+		}		
+		//pass = ""; 
+		//usernm = "";
+  	
+		return "redirect:/mainPage";
+	}
+
+	@RequestMapping(value = "/dashboard/addt/{username:.+}",method = RequestMethod.GET)
+	public ModelAndView addtrans(HttpServletRequest request, HttpServletResponse response, @PathVariable("username")String userid)
+	{
+		return new ModelAndView("addbill","userid",userid);
+	}
+	
+	@RequestMapping(value = "/dashboard",method = RequestMethod.GET)
+	public ModelAndView showDashboard(HttpSession session)
+	{
+		String json = "";
+		ObjectMapper mapper = new ObjectMapper();
+		UserDashboard friendsBal = null;
+		ModelAndView model1 = null;
+		UserLogin existingUser = null;
+		String user = null, passwd = null;
+		boolean exists = false;
+		try
+		{
+			//user = request.getParameter("userid");
+			/*if(userid != null)
+			{
+				usernm = userid;
+			}
+			if(request.getParameter("password") != null)
+			{
+				pass = request.getParameter("password");
+			}
+			existingUser = transactionsService.checkUserExistance(userid, pass);
+			exists = existingUser.getExists().equalsIgnoreCase("success");
+			System.out.println("exists---------------------------------"+exists);*/
+			//if(exists)
+			//{
+				//setSession(session, userid);
+				friendsBal = transactionsService.getDashboard(session.getAttribute("username").toString());
+				System.out.println("User::::::::::::::::::::::::::"+friendsBal.getUserid());
+				json = mapper.writeValueAsString(friendsBal);
+				System.out.println("Session userid:"+session.getAttribute("username"));
+			//}
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		model1 = new ModelAndView("dashboard");
+		model1.addObject("friendsBal", json);
+		return model1;
+			
+	}
+	
+	/*@RequestMapping(value = "/dashboard/friend",method = RequestMethod.GET)
+	public ModelAndView showFriendsTransactions()
+	{
+		String json = "";
+		ObjectMapper mapper = new ObjectMapper();
+		Friend friendsData = null;
+		try
+		{
+			friendsData = transactionsService.getFriendsTransactions("ashwini@gmail.com", "Mruganka@gmail.com");
+			json = mapper.writeValueAsString(friendsData);
+		}
+		catch(Exception e)
+		{
+			System.out.println("Error in friend's page-------------------------------------------------");
+			e.printStackTrace();
+		}
+		ModelAndView model1 = new ModelAndView("friend");
+		
+		 model1.addObject("friendsTransactions", json);
+		return model1;
+			
+	}*/
+	
+	
+	
+	@RequestMapping(value = "/dashboard/friend/{username:.+}",method = RequestMethod.POST)
+	public ModelAndView showFriendsTransactions1(@PathVariable("username")String user, HttpSession session)
+	{
+		String json = "";
+		System.out.println(user);
+		
+		
+		
+		ObjectMapper mapper = new ObjectMapper();
+		Friend friendsData = null;
+		try
+		{
+			friendsData = transactionsService.getFriendsTransactions(session.getAttribute("username").toString(), user);
+			json = mapper.writeValueAsString(friendsData);
+		}
+		catch(Exception e)
+		{
+			System.out.println("Error in friend's page-------------------------------------------------");
+			e.printStackTrace();
+		}
+		ModelAndView model1 = new ModelAndView("friend");
+		
+		 model1.addObject("friendsTransactions", json);
+		return model1;
+			
+	}
+	@RequestMapping(value = "/dashboard/friend/transaction/{transid}",method = RequestMethod.POST)
+	public ModelAndView showTransaction(@PathVariable("transid")Integer id)
+	{
+		String json = "";
+		ObjectMapper mapper = new ObjectMapper();
+		MetaTransaction trans = null;
+		try
+		{
+			trans = transactionsService.getIndividualTransaction(id);
+			System.out.println(trans.getCategory());
+			json = mapper.writeValueAsString(trans);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		ModelAndView model1 = new ModelAndView("friendssingletransaction");
+		
+		 model1.addObject("transaction", json);
+		return model1;
+	}
+	
+	@RequestMapping(value = "dashboard/addt/newbill/{username:.+}",method = RequestMethod.POST)
+	public String addNewBill(@ModelAttribute("transaction") Transactions transaction,BindingResult result, @PathVariable("username")String user, HttpSession session)
+	{
+		String res = null;
+		try
+		{
+			transaction.setGroupid(1); //Needs to be changed
+			res = transactionsService.addBill(transaction);
+			System.out.println("res:"+res);
+		}
+		catch(Exception e)
+		{
+			System.out.println("Error in friend's page-------------------------------------------------");
+			e.printStackTrace();
+		}
+		return "redirect:/dashboard";
+			
+	}
+	@RequestMapping(value = "/userlogin",method = RequestMethod.GET)
+	public String setSession(@ModelAttribute("appUser")Users appUser, HttpServletRequest request, HttpServletResponse response,HttpSession session)
+	{
+		UserLogin existingUser = null;
+		boolean exists = false;
+		
+		try
+		{
+		existingUser = transactionsService.checkUserExistance(appUser.getEmail(), appUser.getPassword());
+		exists = existingUser.getExists().equalsIgnoreCase("success");
+		System.out.println("exists---------------------------------"+exists);
+		session.setAttribute("username", appUser.getEmail());
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		if(exists)
+		{
+			return "redirect:/dashboard";
+		}
+		else
+		{
+			return "redirect:/mainPage";
+		}
+		
+	}
+	
+}
